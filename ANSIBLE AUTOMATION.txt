@@ -1,0 +1,264 @@
+    ANSIBLE AUTOMATION:
+An agentless tool is a software application that does not require any additional software to be installed on the managed nodes.
+In the case of Ansible, this means that the managed nodes do not need to have the Ansible software installed on them.
+
+Ansible uses SSH (Secure Shell) or WinRM (Windows Remote Management) to connect to the managed nodes and execute commands.
+SSH and WinRM are both standard protocols that are already installed on most systems.
+This makes Ansible very easy to deploy and use, and it also makes it more secure, since there is no need to install additional software on the managed nodes.
+
+There are a few advantages to using an agentless tool like Ansible. First, it is very easy to deploy.
+You do not need to install any software on the managed nodes, which can save you a lot of time and effort. 
+Second, it is more secure. Since there is no need to install additional software on the managed nodes, there is less risk of security vulnerabilities.
+Third, it is more scalable. Ansible can be used to manage a large number of nodes without any performance problems.
+
+WinRM:
+WinRM stands for Windows Remote Management. It is a Microsoft implementation of the WS-Management protocol, which is a standard Simple Object Access Protocol (SOAP)-based, firewall-friendly protocol that allows interoperation between hardware and operating systems from different vendors.
+
+WinRM is a remote management tool that allows you to manage Windows computers from a central location. You can use it to perform tasks such as:
+
+    Execute commands on remote computers
+    Deploy software
+    Collect diagnostic data
+    Configure settings
+    Monitor performance
+
+WinRM uses port 5985 by default. However, you can configure it to use other ports.
+
+To use WinRM, you can use the following methods:
+
+    The Windows Remote Shell (Winrs) command-line tool
+    The Windows PowerShell remoting feature
+    The WinRM API
+
+WinRM is a powerful tool that can be used to manage Windows computers in a variety of ways. It is a valuable tool for system administrators and IT professionals.
+
+Here are some additional things to know about WinRM:
+It is supported by Windows Server 2008 and later, as well as Windows 10 and later.
+It can be used to manage computers running other operating systems, such as Linux and macOS, as long as they have a compatible implementation of the WS-Management protocol.
+It is a secure protocol that uses encryption to protect data in transit.
+
+
+>>> Installing Ansible:
+Steps:
+
+1. On the control nodes:
+Ansible software needs to be installed only on the control node/nodes from which Ansible will be run.
+
+[root@controlnode ~]# dnf list installed platform-python
+[]# dnf install platform-python  ---------------- to install the platform-python
+
+Register your system to Redhat Subscription Manager:
+# subscription-manager register
+# subscription-manager repos --enable ansible-automation-platform-2.4-for-rhel-9-x86_64-rpms ------------ to enable redhat ansible engine repository
+# dnf install ansible
+
+2. On Managed Nodes:
+[]# dnf module install python36
+
+Guided Examples: To install ansible
+# lab intro-install start
+# sudo dnf install ansible
+# ansible --version
+# ansible -m setup localhost | grep ansible_python_version ---------- to get the ansible_python_version
+# lab intro-install finish 
+
+chapter 2:
+Host Inventories: Static & Dynamic Inventories
+* Static Inventory is a text-file with hostnames and IP addresses while Dynamic Inventory is a generated script.
+* Examples of a text-file inventory:
+web1.example.com
+web2.example.com
+db1.example.com
+db2.example.com
+192.0.2.42
+
+>> Grouping the host inventory into host groups:
+[webservers]
+web1.example.com
+web2.example.com
+192.0.2.42
+
+[db-servers]
+db1.example.com
+db2.example.com
+
+[usa]
+washington1.example.com
+washington2.example.com
+
+[canada]
+ontario01.example.com
+ontario02.example.com
+
+[us:children]
+db-servers
+usa
+
+
+>> VERIFYING THE INVENTORY:
+# ansible washington1.example.com --list-hosts ----------- to verify the inventory hostname
+# ansible [host group name] --list-hosts ---------------- to list the hosts in a host group name
+EG: ansible canada --list-hosts
+
+====>> default static inventory file: vim /etc/ansible/hosts
+====>> Inventory file: 
+    [--inventory pathname or -i pathname]
+
+	
+>>> BUILDING AN ANSIBLE INVENTORY: creating a static inventory containing hosts and groups
+# lab deploy-inventory start
+# modify the /etc/ansible/hosts: 
+sudo vim /etc/ansible/hosts
+db-[99:101]-node.example.com
+
+servera.lab.example.com
+
+[webservers]
+serverb.lab.example.com
+
+#ansible all --list-hosts ------------- to verify the managed host
+#ansible ungrouped --list-hosts ------------ to list managed host that do not belong to a group
+#ansible webservers --list-hosts 
+#ansible servers --list-hosts -v ------------------- to display the active Ansible configuration file
+
+
+
+>> USING A CUSTOM STATIC INVENTORY DIRECTORY:
+# mkdir ~/deploy-inventory
+# cd ~/deploy-inventory
+# vim . or vim ~/deploy-inventory
+edit & save :wq!
+
+# ansible all -i inventory --list-hosts
+# ansible ungrouped -i inventory --list-hosts
+# ansible "group-name" -i inventory --lists-hosts
+# lab deploy-inventory finish
+
+
+
+>> MANAGING SETTINGS IN CONFIGURATION FILE:
+vim ansible.cfg 
+[defaults]
+inventory = ./inventory
+remote_user = user
+ask_pass = false
+
+[privilege_escalation]
+become = true
+become_method = sudo
+become_user = root
+become_ask_pass = false
+:wq!
+
+>>> Ansible Configuration
+Directive	     Description
+inventory ------ Specifies the path to the inventory file.
+remote_user 	 The name of the user to log in as on the managed hosts. If not specified, the current user's name is used.
+ask_pass 	     Whether or not to prompt for an SSH password. Can be false if using SSH public key authentication.
+become 	         Whether to automatically switch user on the managed host (typically to root) after connecting. This can also be specified by a play.
+become_method 	 How to switch user (typically sudo, which is the default, but su is an option).
+become_user 	 The user to switch to on the managed host (typically root, which is the default).
+become_ask_pass  Whether to prompt for a password for your become_method. Defaults to false.
+
+>> NON-SSH Connections:
+The protocol used by Ansible to connect to managed hosts is set by default to "smart", it determines the best way yo use SSH.
+
+GUIDED EXERCISE: Managing Ansible Configuration Files
+# lab deploy-manage start
+# mkdir ~/deploy-manage
+# cd ~/deploy-manage
+# touch ansible.cfg
+# vim & edit the ansible.cfg file
+# touch inventory
+# vim & edit the inventory containing hostnames & IP
+# vim & edit ansible.cfg for privilege_escalation
+# lab deploy-manage finish
+
+RUNNING Ad HOC Command: 
+Ad hoc commands are set of module operations ran without using Ansible Playbook.
+Ad Hoc Syntax:
+>> ansible [host-pattern] -m [module-name] -a [arguments] -i [inventory]
+>> ansible all -m ping 
+>> ansible-doc -l ----------- to list all modules installed
+>> ansible-doc ping ---------- ping is a module
+>>  ansible -m user -a 'name=newbie uid=4000 state=present' servera.lab.example.com --------------- the module for user assigns the user newbie uid of 4000 
+
+RUNNING ARBITARY COMMAND ON MANAGED HOSTS: 
+"A working python installation is needed on the managed host"
+>> ansible mymanagedhosts -m command -a /usr/bin/hostname -o ----------- the -o option displays the output
+>> ansible localhost -m shell -a set
+>> ansible localhost -m command -a set
+>> ansible --help 
+
+GUIDED EXERCISE: RUNNING AD HOC COMMAND
+# lab deploy-adhoc start
+# sudo -l -U devops ------------------ to know the sudo configuration for devops account
+# ssh devops@servera.lab.example.com ------------------ to connect to the devops account.
+# sudo -l 
+# exit
+
+>> Change directory to: 
+# mkdir ~/deploy-adhoc
+# cd ~/deploy-adhoc
+# cat ansible.cfg & edit
+# cat inventory & edit 
+# ansible all -m ping 
+# ansible localhost -m command -a 'id' -----------  using the localhost host to connect to workstation
+# ansible localhost -m command -a 'id' -u devops
+# ansible localhost -m copy -a 'content="Managed by Ansible\n" dest=/etc/motd' -u devops
+# ansible localhost -m copy -a 'content="Managed by Ansible\n" dest=/etc/motd' -u devops --become ---------------------
+The use of the --become option is sufficient because the default value for the become_user
+directive is set to root in the /etc/ansible/ansible.cfg file
+# ansible all -m command -a 'cat /etc/motd' -u devops
+# lab deploy-adhoc finish 
+
+
+WRITING AND RUNNING PLAYBOOKS:
+
+---
+- name: Configure of user consistently
+  hosts: Servera.lab.example.com
+  tasks:
+  - name: user1 exists with UID 4000
+    user:
+	  name: user1
+	  uid: 4000
+	  state: present
+	  
+  - name: Configure user2 with uid 4001
+    user: 
+	 name: user2
+	 uid: 4001
+	 state: present
+	 
+   - name: user3 with uid 4003
+     user: 
+	  name: user3
+	  uid: 4003
+	  state: present
+
+RUNNING ANSIBLE PLAYBOOK:
+>> touch ansible-exercise.yml
+>> vim ansible-exercise.yml
+>> Edit and save the YAML Syntax
+---
+- name:
+  hosts:
+  tasks:
+      - name:
+	    service:
+		name:
+		state:
+:wq!
+>> ansible-playbook ansible-exercise.yml ------------- to execute the yaml syntax
+
+>> GUIDED EXERCISE: WRITING AND RUNNING PLAYBOOKS.
+
+STEPS:
+1. mkdir /playbook-basic
+2. cd into /playbook-basic
+3. touch site.yml
+4. vim site.yml & edit with YAML Syntax
+5. ansible-playbook --syntax-check site.yml -------- verify the syntax correct
+6. ansible-playbook site.yml ----------------- Run the playbook
+7. Use [curl commamd] to verify the httpd config on the servers
